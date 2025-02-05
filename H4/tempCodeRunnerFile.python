@@ -1,0 +1,58 @@
+import streamlit as st
+import tensorflow as tf
+from tensorflow.keras.preprocessing import image
+import numpy as np
+from PIL import Image
+import os
+
+# Load the trained model (update the model path accordingly)
+@st.cache_resource
+def load_model():
+    model_path = "model.h5"  # Replace with your actual model path
+    return tf.keras.models.load_model(model_path)
+
+# Preprocess the image
+@st.cache_data
+def preprocess_image(uploaded_file):
+    image_size = 224  # Define the image size used during training
+    img = Image.open(uploaded_file).convert('RGB')
+    img = img.resize((image_size, image_size))
+    img_array = image.img_to_array(img)
+    img_array = np.expand_dims(img_array, axis=0)
+    img_array = img_array / 255.0  # Normalize the image
+    return img_array
+
+# Predict the class
+@st.cache_data
+def predict(model, img_array):
+    predictions = model.predict(img_array)
+    class_idx = np.argmax(predictions, axis=1)[0]
+    confidence = np.max(predictions, axis=1)[0]
+    return class_idx, confidence
+
+# Streamlit app
+st.title("Crop Disease Prediction")
+st.write("Upload an image of a crop to predict its disease status.")
+
+# Upload image
+uploaded_file = st.file_uploader("Choose an image file", type=["jpg", "jpeg", "png"])
+
+if uploaded_file:
+    # Display the uploaded image
+    st.image(uploaded_file, caption="Uploaded Image", use_column_width=True)
+
+    # Load model
+    model = load_model()
+
+    # Preprocess image
+    img_array = preprocess_image(uploaded_file)
+
+    # Predict
+    class_idx, confidence = predict(model, img_array)
+
+    # Class mapping (update based on your model's training)
+    class_names = ["Class 1", "Class 2", "Class 3"]  # Replace with actual class names
+
+    # Display prediction
+    st.write(f"**Prediction:** {class_names[class_idx]}")
+    st.write(f"**Confidence:** {confidence * 100:.2f}%")
